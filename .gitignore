@@ -192,3 +192,5 @@ settings.local.py
 # Arquivos de diretórios do Cursor e GitHub
 .cursor/rules/
 .github/instructions/
+# Snyk Security Extension - AI Rules (auto-generated)
+.github\instructions\snyk_rules.instructions.md
