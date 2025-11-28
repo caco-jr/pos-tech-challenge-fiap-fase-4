@@ -80,10 +80,15 @@ profile_default/
 ipython_config.py
 
 # pyenv
-.python-version
+# .python-version - NÃO ignorar: necessário para uv fixar a versão do Python
 
 # pipenv
 Pipfile.lock
+
+# uv (gerenciador de pacotes)
+# Nota: uv.lock deve ser versionado para builds reproduzíveis
+.uv/
+uv_cache/
 
 # PEP 582
 __pypackages__/
