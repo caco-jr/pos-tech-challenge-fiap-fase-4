@@ -67,7 +67,11 @@ pip install -r requirements.txt
 
 ### Uso Básico
 
-1. Coloque seu vídeo de entrada na pasta `videos/` com o nome `input_video.mp4`
+1. **Baixe o vídeo de entrada:**
+   - Acesse o [Google Drive](https://drive.google.com/drive/folders/11NGeYVnSvDF0bo3NHS47fb4b7vqkpALp)
+   - Baixe o vídeo: `Unlocking Facial Recognition_ Diverse Activities Analysis.mp4`
+   - **Importante:** Renomeie o arquivo para `input_video.mp4`
+   - Coloque o arquivo renomeado na pasta `videos/`
 
 2. Execute o script:
 
