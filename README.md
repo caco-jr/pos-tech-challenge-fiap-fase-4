@@ -31,8 +31,9 @@ Sistema de análise de expressões faciais e emoções em vídeos utilizando Dee
 
 Antes de começar, certifique-se de ter instalado:
 
-- **Python 3.8+** (recomendado: Python 3.10 ou superior)
-- **pip** (gerenciador de pacotes Python)
+- **Python 3.8 até 3.12** (recomendado: Python 3.12 como versão máxima ideal)
+- **[UV](https://github.com/astral-sh/uv)** (recomendado) - Gerenciador rápido de versões Python e pacotes
+- **pip** (alternativa, se não usar UV)
 - **Git** (opcional, para clonar o repositório)
 
 ## 📦 Instalação
@@ -44,23 +45,67 @@ git clone <url-do-repositorio>
 cd reconhecimento-facial
 ```
 
-### 2. Crie um ambiente virtual (recomendado)
+### 2. Instale o UV (Recomendado)
 
-**Windows:**
-```bash
-python -m venv venv
-venv\Scripts\activate
+O UV é uma ferramenta moderna e extremamente rápida para gerenciar versões do Python e instalar pacotes. É altamente recomendado para uma melhor experiência de desenvolvimento.
+
+**Windows (PowerShell):**
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 **Linux/macOS:**
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Após a instalação, reinicie o terminal ou adicione o UV ao PATH.
+
+### 3. Configure o ambiente com UV
+
+O UV gerencia automaticamente a versão do Python e cria o ambiente virtual:
+
+```bash
+# Instala Python 3.12 (se necessário) e cria o ambiente virtual
+uv venv
+
+# Ativa o ambiente virtual
+# Windows:
+.venv\Scripts\activate
+# Linux/macOS:
+source .venv/bin/activate
+
+# Instala as dependências
+uv pip install -r requirements.txt
+```
+
+Ou, de forma ainda mais simples, o UV pode instalar tudo de uma vez:
+
+```bash
+# Cria o ambiente e instala as dependências automaticamente
+uv venv --python 3.12
+uv pip install -r requirements.txt
+```
+
+### Instalação Alternativa (sem UV)
+
+Se preferir usar o método tradicional:
+
+**Windows:**
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**Linux/macOS:**
+
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-```
-
-### 3. Instale as dependências
-
-```bash
 pip install -r requirements.txt
 ```
 
@@ -83,6 +128,7 @@ python detect-expression-video.py
 ```
 
 3. O vídeo processado será salvo em `videos/output_video.mp4`
+
 4. O relatório de análise será salvo em `relatorio_analise.txt` na raiz do projeto
 
 ### Uso Programático
@@ -115,6 +161,7 @@ if success:
 ### Retorno da Função
 
 A função retorna uma tupla `(success, summary)` onde:
+
 - `success` (bool): `True` se o processamento foi concluído com sucesso
 - `summary` (dict): Dicionário com estatísticas completas da análise, incluindo:
   - `total_frames_analisados`: Total de frames processados
@@ -157,6 +204,7 @@ python detect-expression-video.py
 ```
 
 Isso irá:
+
 - Processar o vídeo `videos/input_video.mp4`
 - Gerar o vídeo processado em `videos/output_video.mp4`
 - Criar o relatório em `relatorio_analise.txt`
@@ -208,24 +256,32 @@ O relatório é salvo em formato de texto e pode ser facilmente compartilhado ou
 ## 🔍 Troubleshooting
 
 ### Erro: "Could not open video"
+
 - Verifique se o caminho do vídeo está correto
 - Certifique-se de que o arquivo de vídeo existe e não está corrompido
 - Verifique se o formato do vídeo é suportado (MP4, AVI, MOV, etc.)
 
 ### Erro: "ModuleNotFoundError"
-- Certifique-se de que todas as dependências foram instaladas: `pip install -r requirements.txt`
+
+- Certifique-se de que todas as dependências foram instaladas:
+  - Com UV: `uv pip install -r requirements.txt`
+  - Sem UV: `pip install -r requirements.txt`
 - Verifique se o ambiente virtual está ativado
+- Se estiver usando UV, certifique-se de que o Python 3.12 (ou versão compatível) está instalado: `uv python install 3.12`
 
 ### Processamento muito lento
+
 - O processamento depende do tamanho do vídeo e do hardware
 - Para vídeos grandes, considere reduzir a resolução ou usar um backend de detecção mais rápido
 - O primeiro uso é mais lento devido ao download dos modelos
 
 ### Erro relacionado ao TensorFlow
+
 - Certifique-se de ter uma versão compatível do TensorFlow instalada
 - Em alguns sistemas, pode ser necessário instalar dependências adicionais do sistema
 
 ### Modelos não são baixados
+
 - Verifique sua conexão com a internet
 - Os modelos são baixados automaticamente na primeira execução
 - Os modelos são salvos em `.deepface/` na pasta do usuário
@@ -251,4 +307,3 @@ Desenvolvido como parte do curso de Pós-Graduação em IA da FIAP.
 ---
 
 ⭐ Se este projeto foi útil para você, considere dar uma estrela no repositório!
-

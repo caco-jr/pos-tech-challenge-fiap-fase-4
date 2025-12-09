@@ -8,8 +8,6 @@ de saída com anotações visuais.
 
 import cv2
 import logging
-import os
-import json
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
 from collections import defaultdict, deque
