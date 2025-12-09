@@ -1,0 +1,84 @@
+================================================================================
+RELATÓRIO DE ANÁLISE DE VÍDEO
+================================================================================
+
+Data/Hora: 2025-12-08 22:43:16
+
+RESUMO EXECUTIVO
+--------------------------------------------------------------------------------
+Este relatório apresenta uma análise completa do vídeo, incluindo:
+- Reconhecimento facial e marcação de rostos
+- Análise de expressões emocionais
+- Detecção e categorização de atividades
+- Identificação de anomalias (movimentos bruscos e comportamentos atípicos)
+
+PRINCIPAIS RESULTADOS:
+  • Total de frames analisados: 3326
+  • Número de anomalias detectadas: 490
+
+PRINCIPAIS EMOÇÕES DETECTADAS:
+  1. Neutral: 982 ocorrências (30.1%)
+  2. Sad: 910 ocorrências (27.9%)
+  3. Fear: 528 ocorrências (16.2%)
+
+PRINCIPAIS ATIVIDADES DETECTADAS:
+  1. Gesto Intenso: 2 ocorrências
+  2. Movimento Moderado: 2 ocorrências
+
+================================================================================
+DETALHES COMPLETOS
+================================================================================
+
+RESUMO GERAL
+--------------------------------------------------------------------------------
+Total de frames analisados: 3326
+Total de faces detectadas: 3263
+Faces filtradas (bonecos/ilustrações): 1861
+Número de anomalias detectadas: 490
+
+ANÁLISE DE EMOÇÕES
+--------------------------------------------------------------------------------
+  Neutral: 982 ocorrências (30.1%)
+  Sad: 910 ocorrências (27.9%)
+  Fear: 528 ocorrências (16.2%)
+  Happy: 469 ocorrências (14.4%)
+  Angry: 218 ocorrências (6.7%)
+  Surprise: 156 ocorrências (4.8%)
+
+  Emoção mais frequente: Neutral
+
+ANÁLISE DE ATIVIDADES
+--------------------------------------------------------------------------------
+Total de atividades detectadas: 4
+
+  Atividades por tipo:
+    - Gesto Intenso: 2
+    - Movimento Moderado: 2
+
+  Detalhes das atividades:
+    1. Gesto Intenso (frames 574-635, duração: 62 frames)
+    2. Movimento Moderado (frames 636-639, duração: 4 frames)
+    3. Gesto Intenso (frames 640-679, duração: 40 frames)
+    4. Movimento Moderado (frames 681-3326, duração: 2645 frames)
+
+DETECÇÃO DE ANOMALIAS
+--------------------------------------------------------------------------------
+  Anomalias por tipo:
+    - Movimento Brusco: 153
+    - Mudanca Emocional Brusca: 337
+
+  Detalhes das anomalias (primeiras 10):
+    1. Frame 2: Movimento brusco detectado: 375.5 pixels
+    2. Frame 16: Mudança emocional brusca: ['neutral', 'angry', 'sad'] -> ['neutral']
+    3. Frame 17: Mudança emocional brusca: ['neutral', 'sad'] -> ['neutral', 'fear']
+    4. Frame 25: Movimento brusco detectado: 209.0 pixels
+    5. Frame 27: Mudança emocional brusca: ['neutral', 'fear', 'sad'] -> ['neutral']
+    6. Frame 28: Movimento brusco detectado: 213.1 pixels
+    7. Frame 30: Movimento brusco detectado: 211.9 pixels
+    8. Frame 30: Movimento brusco detectado: 604.1 pixels
+    9. Frame 36: Mudança emocional brusca: ['neutral', 'fear', 'sad'] -> ['neutral']
+    10. Frame 37: Movimento brusco detectado: 214.4 pixels
+
+================================================================================
+Fim do Relatório
+================================================================================

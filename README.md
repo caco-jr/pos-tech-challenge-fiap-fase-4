@@ -17,8 +17,11 @@ Sistema de análise de expressões faciais e emoções em vídeos utilizando Dee
 
 ## ✨ Funcionalidades
 
-- ✅ Detecção de múltiplas faces em vídeos
-- ✅ Análise de emoções em tempo real (felicidade, tristeza, raiva, surpresa, medo, nojo, neutro)
+- ✅ **Reconhecimento facial**: Detecção de múltiplas faces em vídeos
+- ✅ **Análise de expressões emocionais**: Análise de emoções em tempo real (felicidade, tristeza, raiva, surpresa, medo, nojo, neutro)
+- ✅ **Detecção de atividades**: Categorização automática de atividades baseada em movimento e padrões comportamentais
+- ✅ **Detecção de anomalias**: Identificação de movimentos bruscos e comportamentos atípicos
+- ✅ **Geração de relatório**: Criação automática de relatório com estatísticas completas da análise
 - ✅ Geração de vídeo de saída com anotações visuais
 - ✅ Barra de progresso para acompanhamento do processamento
 - ✅ Suporte a visualização em tempo real (opcional)
@@ -80,6 +83,7 @@ python detect-expression-video.py
 ```
 
 3. O vídeo processado será salvo em `videos/output_video.mp4`
+4. O relatório de análise será salvo em `relatorio_analise.txt` na raiz do projeto
 
 ### Uso Programático
 
@@ -89,11 +93,16 @@ Você também pode usar a função diretamente no seu código:
 from detect-expression-video import detect_expressions_in_video
 
 # Processar vídeo e salvar resultado
-detect_expressions_in_video(
+success, summary = detect_expressions_in_video(
     video_path="caminho/para/video.mp4",
     output_path="caminho/para/saida.mp4",
-    display=False  # True para visualizar em tempo real
+    display=False,  # True para visualizar em tempo real
+    report_path="relatorio.txt"  # Caminho para salvar o relatório
 )
+
+if success:
+    print(f"Frames analisados: {summary['total_frames_analisados']}")
+    print(f"Anomalias detectadas: {summary['numero_anomalias_detectadas']}")
 ```
 
 ### Parâmetros da Função
@@ -101,6 +110,19 @@ detect_expressions_in_video(
 - `video_path` (str): Caminho para o vídeo de entrada
 - `output_path` (str, opcional): Caminho para salvar o vídeo processado. Se `None`, não salva o vídeo
 - `display` (bool, opcional): Se `True`, exibe o vídeo em tempo real durante o processamento (pressione 'q' para sair)
+- `report_path` (str, opcional): Caminho para salvar o relatório de análise. Se `None`, o relatório será exibido no console
+
+### Retorno da Função
+
+A função retorna uma tupla `(success, summary)` onde:
+- `success` (bool): `True` se o processamento foi concluído com sucesso
+- `summary` (dict): Dicionário com estatísticas completas da análise, incluindo:
+  - `total_frames_analisados`: Total de frames processados
+  - `total_faces_detectadas`: Total de faces detectadas
+  - `numero_anomalias_detectadas`: Número de anomalias encontradas
+  - `atividades_detectadas`: Número de atividades categorizadas
+  - `emocoes_detectadas`: Distribuição de emoções detectadas
+  - E muito mais...
 
 ## 📁 Estrutura do Projeto
 
@@ -111,6 +133,7 @@ reconhecimento-facial/
 ├── requirements.txt            # Dependências do projeto
 ├── README.md                   # Este arquivo
 ├── .gitignore                  # Arquivos ignorados pelo Git
+├── relatorio_analise.txt       # Relatório gerado automaticamente (não versionado)
 │
 └── videos/                     # Pasta para vídeos
     ├── input_video.mp4         # Vídeo de entrada (não versionado)
@@ -133,16 +156,24 @@ reconhecimento-facial/
 python detect-expression-video.py
 ```
 
+Isso irá:
+- Processar o vídeo `videos/input_video.mp4`
+- Gerar o vídeo processado em `videos/output_video.mp4`
+- Criar o relatório em `relatorio_analise.txt`
+
 ### Exemplo 2: Visualização em tempo real
 
 ```python
 from detect-expression-video import detect_expressions_in_video
 
-detect_expressions_in_video(
+success, summary = detect_expressions_in_video(
     video_path="videos/input_video.mp4",
     output_path=None,
-    display=True  # Visualiza o vídeo em tempo real
+    display=True,  # Visualiza o vídeo em tempo real
+    report_path="meu_relatorio.txt"
 )
+
+print(f"Anomalias encontradas: {summary['numero_anomalias_detectadas']}")
 ```
 
 ### Exemplo 3: Processar vídeo customizado
@@ -150,12 +181,29 @@ detect_expressions_in_video(
 ```python
 from detect-expression-video import detect_expressions_in_video
 
-detect_expressions_in_video(
+success, summary = detect_expressions_in_video(
     video_path="meu_video.mp4",
     output_path="resultado.mp4",
-    display=False
+    display=False,
+    report_path="analise_completa.txt"
 )
+
+# Acessar estatísticas detalhadas
+print(f"Total de frames: {summary['total_frames_analisados']}")
+print(f"Atividades detectadas: {summary['atividades_detectadas']}")
+print(f"Emoção mais frequente: {summary['emocao_mais_frequente']}")
 ```
+
+## 📊 Relatório de Análise
+
+O sistema gera automaticamente um relatório completo contendo:
+
+- **Resumo Geral**: Total de frames analisados, faces detectadas e anomalias
+- **Análise de Emoções**: Distribuição percentual de todas as emoções detectadas
+- **Análise de Atividades**: Categorização e contagem de atividades identificadas
+- **Detecção de Anomalias**: Lista detalhada de movimentos bruscos e comportamentos atípicos
+
+O relatório é salvo em formato de texto e pode ser facilmente compartilhado ou incluído na documentação do projeto.
 
 ## 🔍 Troubleshooting
 
