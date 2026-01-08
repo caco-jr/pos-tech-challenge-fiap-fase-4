@@ -14,6 +14,8 @@ from collections import defaultdict, deque
 from datetime import datetime
 from tqdm import tqdm
 import numpy as np
+import mediapipe as mp
+from transformers import pipeline
 
 try:
     from deepface import DeepFace
@@ -52,6 +54,13 @@ HISTORY_SIZE = 5  # Tamanho da janela para análise de padrões
 MIN_ACTIVITY_DURATION = 3  # Frames mínimos para considerar uma atividade
 ACTIVITY_DISPLAY_DURATION = 30  # Frames para manter atividade visível no vídeo
 
+# Constantes para detecção de pose e atividades específicas
+MIN_POSE_CONFIDENCE = 0.5  # Confiança mínima dos landmarks de pose
+ANGLE_TOLERANCE = 15  # Tolerância em graus para classificação de ângulos
+HAND_FACE_DISTANCE_THRESHOLD = 0.15  # Distância normalizada para considerar mão próxima ao rosto
+WAVE_MOVEMENT_THRESHOLD = 0.05  # Movimento mínimo para detectar aceno
+WAVE_FRAMES_THRESHOLD = 5  # Frames consecutivos para confirmar aceno
+
 # Constantes para validação de faces (filtrar bonecos/ilustrações)
 MIN_FACE_WIDTH = 40  # Largura mínima da face em pixels (aumentado para melhor precisão)
 MIN_FACE_HEIGHT = 40  # Altura mínima da face em pixels (aumentado para melhor precisão)
@@ -61,6 +70,175 @@ MAX_ASPECT_RATIO = 1.8  # Proporção máxima largura/altura (ajustado para face
 MAX_EMOTION_ENTROPY = 0.80  # Entropia máxima das emoções (detecta distribuições muito uniformes = suspeito)
 MIN_FACE_AREA = 1600  # Área mínima da face em pixels² (40x40)
 MAX_FACE_AREA_RATIO = 0.5  # Máximo de área da face em relação ao frame (evita faces muito grandes = suspeito)
+
+
+def calculate_angle(point_a: Any, point_b: Any, point_c: Any) -> float:
+    """
+    Calcula o ângulo entre três pontos, onde point_b é o vértice.
+
+    Args:
+        point_a: Primeiro ponto (landmark)
+        point_b: Ponto central (vértice do ângulo)
+        point_c: Terceiro ponto (landmark)
+
+    Returns:
+        Ângulo em graus
+    """
+    try:
+        a = np.array([point_a.x, point_a.y])
+        b = np.array([point_b.x, point_b.y])
+        c = np.array([point_c.x, point_c.y])
+
+        radians = np.arctan2(c[1] - b[1], c[0] - b[0]) - np.arctan2(a[1] - b[1], a[0] - b[0])
+        angle = np.abs(radians * 180.0 / np.pi)
+
+        if angle > 180.0:
+            angle = 360 - angle
+
+        return angle
+    except Exception:
+        return 0.0
+
+
+def analyze_pose_for_activity(landmarks: Any) -> Dict[str, Any]:
+    """
+    Analisa landmarks de pose para extrair informações sobre a postura corporal.
+
+    Args:
+        landmarks: Landmarks de pose do MediaPipe
+
+    Returns:
+        Dicionário com informações sobre a pose:
+        - hands_raised: Mãos acima dos ombros
+        - is_sitting: Pessoa sentada
+        - head_tilted_down: Cabeça inclinada para baixo
+        - is_lying: Corpo em posição horizontal
+        - hand_near_face: Mão próxima ao rosto
+        - arms_position: Posição geral dos braços ('up', 'down', 'neutral')
+        - left_arm_up: Braço esquerdo levantado
+        - right_arm_up: Braço direito levantado
+    """
+    # Tenta obter mp_pose de forma compatível com diferentes versões
+    try:
+        if hasattr(mp, 'solutions'):
+            mp_pose = mp.solutions.pose
+        else:
+            from mediapipe.python.solutions import pose as mp_pose_module
+            mp_pose = mp_pose_module
+    except (AttributeError, ImportError):
+        # Fallback: define constantes manualmente se não conseguir importar
+        class PoseLandmark:
+            LEFT_SHOULDER = 11
+            RIGHT_SHOULDER = 12
+            LEFT_ELBOW = 13
+            RIGHT_ELBOW = 14
+            LEFT_WRIST = 15
+            RIGHT_WRIST = 16
+            LEFT_HIP = 23
+            RIGHT_HIP = 24
+            LEFT_KNEE = 25
+            RIGHT_KNEE = 26
+            NOSE = 0
+            LEFT_ANKLE = 27
+            RIGHT_ANKLE = 28
+        mp_pose = type('mp_pose', (), {'PoseLandmark': PoseLandmark})()
+
+    pose_info = {
+        'hands_raised': False,
+        'is_sitting': False,
+        'head_tilted_down': False,
+        'is_lying': False,
+        'hand_near_face': False,
+        'arms_position': 'neutral',
+        'left_arm_up': False,
+        'right_arm_up': False
+    }
+
+    try:
+        # Obtém landmarks principais
+        # Usa .value se for enum, senão usa diretamente
+        try:
+            left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER.value]
+            right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER.value]
+            left_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW.value]
+            right_elbow = landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW.value]
+            left_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value]
+            right_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value]
+            left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP.value]
+            right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP.value]
+            left_knee = landmarks[mp_pose.PoseLandmark.LEFT_KNEE.value]
+            right_knee = landmarks[mp_pose.PoseLandmark.RIGHT_KNEE.value]
+            nose = landmarks[mp_pose.PoseLandmark.NOSE.value]
+            left_ankle = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE.value]
+            right_ankle = landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE.value]
+        except (AttributeError, TypeError):
+            # Se não tiver .value, usa diretamente (fallback)
+            left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
+            right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+            left_elbow = landmarks[mp_pose.PoseLandmark.LEFT_ELBOW]
+            right_elbow = landmarks[mp_pose.PoseLandmark.RIGHT_ELBOW]
+            left_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST]
+            right_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
+            left_hip = landmarks[mp_pose.PoseLandmark.LEFT_HIP]
+            right_hip = landmarks[mp_pose.PoseLandmark.RIGHT_HIP]
+            left_knee = landmarks[mp_pose.PoseLandmark.LEFT_KNEE]
+            right_knee = landmarks[mp_pose.PoseLandmark.RIGHT_KNEE]
+            nose = landmarks[mp_pose.PoseLandmark.NOSE]
+            left_ankle = landmarks[mp_pose.PoseLandmark.LEFT_ANKLE]
+            right_ankle = landmarks[mp_pose.PoseLandmark.RIGHT_ANKLE]
+
+        # Verifica se braços estão levantados
+        left_arm_up = left_wrist.y < left_elbow.y < left_shoulder.y
+        right_arm_up = right_wrist.y < right_elbow.y < right_shoulder.y
+        pose_info['left_arm_up'] = left_arm_up
+        pose_info['right_arm_up'] = right_arm_up
+        pose_info['hands_raised'] = left_arm_up or right_arm_up
+
+        # Determina posição dos braços
+        if left_arm_up and right_arm_up:
+            pose_info['arms_position'] = 'up'
+        elif left_arm_up or right_arm_up:
+            pose_info['arms_position'] = 'up'
+        elif left_wrist.y > left_shoulder.y and right_wrist.y > right_shoulder.y:
+            pose_info['arms_position'] = 'down'
+        else:
+            pose_info['arms_position'] = 'neutral'
+
+        # Verifica se está sentado (joelhos próximos ao nível dos quadris)
+        hip_y = (left_hip.y + right_hip.y) / 2
+        knee_y = (left_knee.y + right_knee.y) / 2
+        ankle_y = (left_ankle.y + right_ankle.y) / 2
+
+        # Se a diferença entre quadris e joelhos for pequena, provavelmente está sentado
+        if abs(hip_y - knee_y) < 0.15 and abs(knee_y - ankle_y) > 0.1:
+            pose_info['is_sitting'] = True
+
+        # Verifica se está deitado (corpo em posição horizontal)
+        # Se a diferença vertical entre ombros e quadris for pequena
+        shoulder_y = (left_shoulder.y + right_shoulder.y) / 2
+        if abs(shoulder_y - hip_y) < 0.1:
+            pose_info['is_lying'] = True
+
+        # Verifica se a cabeça está inclinada para baixo
+        if nose.y > left_shoulder.y and nose.y > right_shoulder.y:
+            pose_info['head_tilted_down'] = True
+
+        # Verifica se mão está próxima ao rosto
+        left_hand_face_dist = np.sqrt(
+            (left_wrist.x - nose.x) ** 2 + (left_wrist.y - nose.y) ** 2
+        )
+        right_hand_face_dist = np.sqrt(
+            (right_wrist.x - nose.x) ** 2 + (right_wrist.y - nose.y) ** 2
+        )
+
+        if (left_hand_face_dist < HAND_FACE_DISTANCE_THRESHOLD or
+                right_hand_face_dist < HAND_FACE_DISTANCE_THRESHOLD):
+            pose_info['hand_near_face'] = True
+
+    except (IndexError, AttributeError, KeyError) as e:
+        logger.debug(f"Erro ao analisar pose: {e}")
+
+    return pose_info
 
 
 class VideoStatistics:
@@ -78,12 +256,17 @@ class VideoStatistics:
         self.current_activity = None
         self.activity_start_frame = None
         self.active_activities = []  # Atividades ativas no frame atual para visualização
+        self.prev_left_wrist_x = 0
+        self.prev_right_wrist_x = 0
+        self.wave_frames = 0
 
     def add_frame_data(
         self,
         frame_number: int,
         faces_data: List[Dict[str, Any]],
-        previous_positions: Optional[List[Tuple[int, int, int, int]]] = None
+        previous_positions: Optional[List[Tuple[int, int, int, int]]] = None,
+        pose_info: Optional[Dict[str, Any]] = None,
+        pose_landmarks: Optional[Any] = None
     ) -> Tuple[List[str], List[Dict[str, Any]]]:
         """
         Adiciona dados de um frame e detecta atividades/anomalias.
@@ -92,6 +275,8 @@ class VideoStatistics:
             frame_number: Número do frame atual
             faces_data: Lista de dados das faces detectadas
             previous_positions: Posições das faces no frame anterior
+            pose_info: Informações sobre a pose corporal detectada
+            pose_landmarks: Landmarks de pose para análise de movimento (opcional)
 
         Returns:
             Tupla com (lista de atividades detectadas, lista de anomalias detectadas)
@@ -102,6 +287,7 @@ class VideoStatistics:
 
         current_positions = []
         current_emotions = []
+        dominant_emotion = None
 
         for face_data in faces_data:
             self.total_faces_detected += 1
@@ -122,65 +308,100 @@ class VideoStatistics:
             center_y = y + h // 2
             current_positions.append((center_x, center_y, w, h))
 
-            # Detecta movimento/anomalia se houver posição anterior
-            if previous_positions and len(previous_positions) > 0:
-                # Calcula movimento em relação à face mais próxima
-                min_distance = float('inf')
-                closest_prev = None
+        # PRIORIDADE 1: Detecção baseada em pose corporal (mais específica)
+        if pose_info:
+            activity_type = self._categorize_activity_from_pose(pose_info, dominant_emotion, pose_landmarks)
 
-                for prev_pos in previous_positions:
-                    prev_center_x, prev_center_y = prev_pos[0], prev_pos[1]
+            if activity_type and activity_type != self.current_activity:
+                # Finaliza atividade anterior
+                if self.current_activity and self.activity_start_frame:
+                    duration = frame_number - self.activity_start_frame
+                    if duration >= MIN_ACTIVITY_DURATION:
+                        activity = {
+                            'type': self.current_activity,
+                            'start_frame': self.activity_start_frame,
+                            'end_frame': frame_number - 1,
+                            'duration_frames': duration
+                        }
+                        self.activities_detected.append(activity)
+                        activities.append(activity)
+
+                # Inicia nova atividade
+                self.current_activity = activity_type
+                self.activity_start_frame = frame_number
+
+            # Adiciona atividade ativa para visualização
+            if self.current_activity and current_positions:
+                center_x, center_y = current_positions[0][0], current_positions[0][1]
+                self.active_activities.append({
+                    'type': self.current_activity,
+                    'frame': frame_number,
+                    'position': (center_x, center_y)
+                })
+
+        # PRIORIDADE 2: Detecção baseada em movimento (fallback se não houver pose)
+        if not pose_info and previous_positions and len(previous_positions) > 0 and current_positions:
+            # Calcula movimento em relação à face mais próxima
+            min_distance = float('inf')
+            closest_prev = None
+
+            for prev_pos in previous_positions:
+                prev_center_x, prev_center_y = prev_pos[0], prev_pos[1]
+                for curr_pos in current_positions:
+                    curr_center_x, curr_center_y = curr_pos[0], curr_pos[1]
                     distance = np.sqrt(
-                        (center_x - prev_center_x) ** 2 +
-                        (center_y - prev_center_y) ** 2
+                        (curr_center_x - prev_center_x) ** 2 +
+                        (curr_center_y - prev_center_y) ** 2
                     )
                     if distance < min_distance:
                         min_distance = distance
                         closest_prev = prev_pos
 
-                if closest_prev:
-                    movement = min_distance
+            if closest_prev and min_distance != float('inf'):
+                movement = min_distance
 
-                    # Detecta anomalia por movimento brusco
-                    if movement > ANOMALY_MOVEMENT_THRESHOLD:
-                        anomaly = {
+                # Detecta anomalia por movimento brusco
+                if movement > ANOMALY_MOVEMENT_THRESHOLD:
+                    center_x, center_y = current_positions[0][0], current_positions[0][1]
+                    anomaly = {
+                        'frame': frame_number,
+                        'type': 'movimento_brusco',
+                        'movement_pixels': float(movement),
+                        'position': (center_x, center_y),
+                        'description': f'Movimento brusco detectado: {movement:.1f} pixels'
+                    }
+                    anomalies.append(anomaly)
+                    self.anomalies_detected.append(anomaly)
+
+                # Detecta atividade por movimento moderado (fallback)
+                elif movement > MOVEMENT_THRESHOLD:
+                    activity_type = self._categorize_activity(movement, dominant_emotion)
+                    if self.current_activity != activity_type:
+                        # Finaliza atividade anterior
+                        if self.current_activity and self.activity_start_frame:
+                            duration = frame_number - self.activity_start_frame
+                            if duration >= MIN_ACTIVITY_DURATION:
+                                activity = {
+                                    'type': self.current_activity,
+                                    'start_frame': self.activity_start_frame,
+                                    'end_frame': frame_number - 1,
+                                    'duration_frames': duration
+                                }
+                                self.activities_detected.append(activity)
+                                activities.append(activity)
+
+                        # Inicia nova atividade
+                        self.current_activity = activity_type
+                        self.activity_start_frame = frame_number
+
+                    # Adiciona atividade ativa para visualização
+                    if self.current_activity and current_positions:
+                        center_x, center_y = current_positions[0][0], current_positions[0][1]
+                        self.active_activities.append({
+                            'type': self.current_activity,
                             'frame': frame_number,
-                            'type': 'movimento_brusco',
-                            'movement_pixels': float(movement),
-                            'position': (center_x, center_y),
-                            'description': f'Movimento brusco detectado: {movement:.1f} pixels'
-                        }
-                        anomalies.append(anomaly)
-                        self.anomalies_detected.append(anomaly)
-
-                    # Detecta atividade por movimento moderado
-                    elif movement > MOVEMENT_THRESHOLD:
-                        activity_type = self._categorize_activity(movement, dominant_emotion)
-                        if self.current_activity != activity_type:
-                            # Finaliza atividade anterior
-                            if self.current_activity and self.activity_start_frame:
-                                duration = frame_number - self.activity_start_frame
-                                if duration >= MIN_ACTIVITY_DURATION:
-                                    activity = {
-                                        'type': self.current_activity,
-                                        'start_frame': self.activity_start_frame,
-                                        'end_frame': frame_number - 1,
-                                        'duration_frames': duration
-                                    }
-                                    self.activities_detected.append(activity)
-                                    activities.append(activity)
-
-                            # Inicia nova atividade
-                            self.current_activity = activity_type
-                            self.activity_start_frame = frame_number
-
-                        # Adiciona atividade ativa para visualização
-                        if self.current_activity:
-                            self.active_activities.append({
-                                'type': self.current_activity,
-                                'frame': frame_number,
-                                'position': (center_x, center_y)
-                            })
+                            'position': (center_x, center_y)
+                        })
 
         # Detecta anomalia por mudança emocional brusca (apenas mudanças significativas)
         if len(self.emotion_history) >= 2 and current_emotions:
@@ -217,9 +438,100 @@ class VideoStatistics:
 
         return activities, anomalies
 
+    def _categorize_activity_from_pose(
+        self,
+        pose_info: Dict[str, Any],
+        emotion: Optional[str],
+        landmarks: Optional[Any] = None
+    ) -> Optional[str]:
+        """
+        Categoriza atividade baseado em análise de pose corporal (prioridade alta).
+
+        Args:
+            pose_info: Informações sobre a pose detectada
+            emotion: Emoção dominante detectada
+            landmarks: Landmarks de pose para análise de movimento (opcional)
+
+        Returns:
+            Tipo de atividade detectada ou None
+        """
+        # Detecta aceno (tchau) - movimento lateral dos braços levantados
+        if pose_info.get('hands_raised', False) and landmarks is not None:
+            # Verifica movimento lateral (aceno)
+            try:
+                mp_pose = mp.solutions.pose if hasattr(mp, 'solutions') else None
+                if mp_pose:
+                    left_wrist = landmarks[mp_pose.PoseLandmark.LEFT_WRIST.value if hasattr(mp_pose.PoseLandmark.LEFT_WRIST, 'value') else mp_pose.PoseLandmark.LEFT_WRIST]
+                    right_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST.value if hasattr(mp_pose.PoseLandmark.RIGHT_WRIST, 'value') else mp_pose.PoseLandmark.RIGHT_WRIST]
+
+                    if self.prev_left_wrist_pos is not None:
+                        left_movement = abs(left_wrist.x - self.prev_left_wrist_pos[0])
+                        if left_movement > WAVE_MOVEMENT_THRESHOLD:
+                            self.wave_frames += 1
+                        else:
+                            self.wave_frames = max(0, self.wave_frames - 1)
+
+                    if self.prev_right_wrist_pos is not None:
+                        right_movement = abs(right_wrist.x - self.prev_right_wrist_pos[0])
+                        if right_movement > WAVE_MOVEMENT_THRESHOLD:
+                            self.wave_frames += 1
+                        else:
+                            self.wave_frames = max(0, self.wave_frames - 1)
+
+                    # Atualiza posições anteriores
+                    self.prev_left_wrist_pos = (left_wrist.x, left_wrist.y)
+                    self.prev_right_wrist_pos = (right_wrist.x, right_wrist.y)
+
+                    # Se houver movimento lateral consistente, é aceno
+                    if self.wave_frames >= WAVE_FRAMES_THRESHOLD:
+                        return 'acenando_tchau'
+            except (AttributeError, IndexError, TypeError):
+                pass
+
+        # 1. Mãos levantadas (prioridade mais alta - mais específico)
+        if pose_info.get('hands_raised', False):
+            left_arm_up = pose_info.get('left_arm_up', False)
+            right_arm_up = pose_info.get('right_arm_up', False)
+
+            if left_arm_up and right_arm_up:
+                return 'maos_levantadas_ambas'
+            elif left_arm_up:
+                return 'mao_levantada_esquerda'
+            elif right_arm_up:
+                return 'mao_levantada_direita'
+
+        # 2. Procedimento estético (pessoa deitada) ou Repouso
+        if pose_info.get('is_lying', False):
+            return 'procedimento_estetico'
+
+        # 3. Refletindo ou Surpresa com mãos no rosto
+        if pose_info.get('hand_near_face', False):
+            # Se a emoção for surpresa, é expressão de surpresa
+            if emotion == 'surprise':
+                return 'expressao_surpresa'
+            # Caso contrário, é refletindo
+            return 'refletindo'
+
+        # 4. Estudando ou Uso de celular/leitura (sentado, cabeça inclinada para baixo)
+        if pose_info.get('is_sitting', False) and pose_info.get('head_tilted_down', False):
+            # Se braços estão baixos e próximos, pode ser uso de celular
+            if pose_info.get('arms_position') == 'down':
+                return 'usando_celular_ou_lendo'
+            return 'estudando'
+
+        # 5. Trabalhando (sentado, braços baixos, expressão neutra ou feliz)
+        if pose_info.get('is_sitting', False):
+            arms_down = pose_info.get('arms_position') == 'down'
+            if arms_down and emotion in ['neutral', 'happy', None]:
+                return 'trabalhando'
+
+        return None
+
     def _categorize_activity(self, movement: float, emotion: Optional[str]) -> str:
         """
-        Categoriza o tipo de atividade baseado no movimento e emoção.
+        Categoriza o tipo de atividade baseado no movimento e emoção (fallback).
+
+        Usado quando não há informações de pose disponíveis.
 
         Categorias de atividades:
         - movimento_rapido: Movimentos rápidos e bruscos
@@ -555,8 +867,6 @@ def analyze_frame(frame: cv2.typing.MatLike, stats: Optional['VideoStatistics'] 
                 frame,
                 actions=EMOTION_ACTIONS,
                 enforce_detection=False,
-                detector_backend=backend,
-                silent=True
             )
         except Exception as backend_error:
             # Fallback para opencv se o backend configurado falhar
@@ -639,7 +949,19 @@ def draw_activities(frame: cv2.typing.MatLike, activities: List[Dict[str, Any]],
 
             # Mapeia tipos de atividade para nomes mais descritivos
             activity_names = {
-                'movimento_rapido': 'Movimento Rapido',
+                # Atividades baseadas em pose (prioridade alta)
+                'maos_levantadas_ambas': 'Mãos Levantadas',
+                'mao_levantada_esquerda': 'Mão Esquerda Levantada',
+                'mao_levantada_direita': 'Mão Direita Levantada',
+                'acenando_tchau': 'Acenando (Tchau)',
+                'procedimento_estetico': 'Procedimento Estético / Repouso',
+                'refletindo': 'Refletindo',
+                'expressao_surpresa': 'Expressão de Surpresa',
+                'estudando': 'Estudando',
+                'usando_celular_ou_lendo': 'Usando Celular / Lendo',
+                'trabalhando': 'Trabalhando / Digitando',
+                # Atividades baseadas em movimento (fallback)
+                'movimento_rapido': 'Movimento Rápido',
                 'movimento_moderado': 'Movimento Moderado',
                 'gesto_expressivo': 'Gesto Expressivo',
                 'gesto_intenso': 'Gesto Intenso',
@@ -697,9 +1019,9 @@ def process_single_frame(
         process_face_detection(frame, face_data)
         faces_detected += 1
 
-    # Desenha indicadores de atividades
-    if activities:
-        draw_activities(frame, activities, frame_number)
+    # Desenha indicadores de atividades (desabilitado - atividades não são exibidas no vídeo)
+    # if activities:
+    #     draw_activities(frame, activities, frame_number)
 
     # Desenha indicadores de anomalias
     if anomalies:
@@ -910,6 +1232,38 @@ def detect_expressions_in_video(
     stats = VideoStatistics()
     previous_positions = None
 
+    # Inicializa MediaPipe Pose
+    # Verifica se mp.solutions existe (versões antigas) ou usa import direto
+    try:
+        # Tenta a API antiga primeiro
+        if hasattr(mp, 'solutions'):
+            mp_pose = mp.solutions.pose
+            mp_drawing = mp.solutions.drawing_utils
+        else:
+            # Tenta importar diretamente (versões mais recentes)
+            from mediapipe.python.solutions import pose as mp_pose
+            from mediapipe.python.solutions import drawing_utils as mp_drawing
+    except (AttributeError, ImportError) as e:
+        logger.error(f"Erro ao importar MediaPipe Pose: {e}")
+        logger.warning("MediaPipe solutions não disponível. Continuando sem detecção de pose.")
+        mp_pose = None
+        mp_drawing = None
+
+    if mp_pose is not None:
+        try:
+            pose = mp_pose.Pose(
+                model_complexity=1,
+                smooth_landmarks=True,
+                min_detection_confidence=MIN_POSE_CONFIDENCE,
+                min_tracking_confidence=MIN_POSE_CONFIDENCE,
+                static_image_mode=False
+            )
+        except Exception as e:
+            logger.error(f"Erro ao inicializar MediaPipe Pose: {e}")
+            pose = None
+    else:
+        pose = None
+
     out = None
     try:
         # Obtém propriedades do vídeo
@@ -935,6 +1289,29 @@ def detect_expressions_in_video(
                 if not ret:
                     break
 
+                # Converte frame para RGB para MediaPipe
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                # Detecta pose corporal
+                pose_info = None
+                pose_landmarks = None
+                if pose is not None:
+                    try:
+                        pose_results = pose.process(rgb_frame)
+                        if pose_results and pose_results.pose_landmarks:
+                            pose_landmarks = pose_results.pose_landmarks.landmark
+                            # Desenha landmarks de pose no frame (opcional)
+                            if mp_drawing is not None and mp_pose is not None:
+                                mp_drawing.draw_landmarks(
+                                    frame,
+                                    pose_results.pose_landmarks,
+                                    mp_pose.POSE_CONNECTIONS
+                                )
+                            # Analisa pose para extrair informações
+                            pose_info = analyze_pose_for_activity(pose_landmarks)
+                    except Exception as e:
+                        logger.debug(f"Erro ao processar pose: {e}")
+
                 # Analisa o frame para obter dados das faces (filtra bonecos/ilustrações)
                 faces_data = analyze_frame(frame, stats=stats)
 
@@ -955,7 +1332,9 @@ def detect_expressions_in_video(
                 _, anomalies = stats.add_frame_data(
                     frame_number,
                     faces_data,
-                    previous_positions
+                    previous_positions,
+                    pose_info,
+                    pose_landmarks
                 )
 
                 # Limpa atividades antigas da lista de visualização (otimização de memória)
@@ -1010,6 +1389,11 @@ def detect_expressions_in_video(
         cap.release()
         if out:
             out.release()
+        if pose is not None:
+            try:
+                pose.close()  # Libera recursos do MediaPipe Pose
+            except Exception:
+                pass  # Ignora erros ao fechar
         if display:
             cv2.destroyAllWindows()
         logger.info("Recursos liberados")
