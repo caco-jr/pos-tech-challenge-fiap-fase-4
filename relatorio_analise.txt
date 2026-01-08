@@ -2,7 +2,7 @@
 RELATÓRIO DE ANÁLISE DE VÍDEO
 ================================================================================
 
-Data/Hora: 2025-12-08 22:43:16
+Data/Hora: 2026-01-08 20:15:25
 
 RESUMO EXECUTIVO
 --------------------------------------------------------------------------------
@@ -14,16 +14,17 @@ Este relatório apresenta uma análise completa do vídeo, incluindo:
 
 PRINCIPAIS RESULTADOS:
   • Total de frames analisados: 3326
-  • Número de anomalias detectadas: 490
+  • Número de anomalias detectadas: 214
 
 PRINCIPAIS EMOÇÕES DETECTADAS:
-  1. Neutral: 982 ocorrências (30.1%)
-  2. Sad: 910 ocorrências (27.9%)
-  3. Fear: 528 ocorrências (16.2%)
+  1. Happy: 554 ocorrências (44.1%)
+  2. Neutral: 277 ocorrências (22.1%)
+  3. Surprise: 199 ocorrências (15.9%)
 
 PRINCIPAIS ATIVIDADES DETECTADAS:
-  1. Gesto Intenso: 2 ocorrências
-  2. Movimento Moderado: 2 ocorrências
+  1. Refletindo: 20 ocorrências
+  2. Trabalhando: 17 ocorrências
+  3. Mao Levantada Direita: 15 ocorrências
 
 ================================================================================
 DETALHES COMPLETOS
@@ -32,52 +33,62 @@ DETALHES COMPLETOS
 RESUMO GERAL
 --------------------------------------------------------------------------------
 Total de frames analisados: 3326
-Total de faces detectadas: 3263
-Faces filtradas (bonecos/ilustrações): 1861
-Número de anomalias detectadas: 490
+Total de faces detectadas: 1255
+Faces filtradas (bonecos/ilustrações): 2164
+Número de anomalias detectadas: 214
 
 ANÁLISE DE EMOÇÕES
 --------------------------------------------------------------------------------
-  Neutral: 982 ocorrências (30.1%)
-  Sad: 910 ocorrências (27.9%)
-  Fear: 528 ocorrências (16.2%)
-  Happy: 469 ocorrências (14.4%)
-  Angry: 218 ocorrências (6.7%)
-  Surprise: 156 ocorrências (4.8%)
+  Happy: 554 ocorrências (44.1%)
+  Neutral: 277 ocorrências (22.1%)
+  Surprise: 199 ocorrências (15.9%)
+  Fear: 118 ocorrências (9.4%)
+  Sad: 60 ocorrências (4.8%)
+  Angry: 47 ocorrências (3.7%)
 
-  Emoção mais frequente: Neutral
+  Emoção mais frequente: Happy
 
 ANÁLISE DE ATIVIDADES
 --------------------------------------------------------------------------------
-Total de atividades detectadas: 4
+Total de atividades detectadas: 71
 
   Atividades por tipo:
-    - Gesto Intenso: 2
-    - Movimento Moderado: 2
+    - Trabalhando: 17
+    - Refletindo: 20
+    - Maos Levantadas Ambas: 6
+    - Acenando Tchau: 1
+    - Mao Levantada Esquerda: 4
+    - Mao Levantada Direita: 15
+    - Procedimento Estetico: 8
 
   Detalhes das atividades:
-    1. Gesto Intenso (frames 574-635, duração: 62 frames)
-    2. Movimento Moderado (frames 636-639, duração: 4 frames)
-    3. Gesto Intenso (frames 640-679, duração: 40 frames)
-    4. Movimento Moderado (frames 681-3326, duração: 2645 frames)
+    1. Trabalhando (frames 141-545, duração: 405 frames)
+    2. Refletindo (frames 553-570, duração: 18 frames)
+    3. Maos Levantadas Ambas (frames 572-584, duração: 13 frames)
+    4. Maos Levantadas Ambas (frames 586-588, duração: 3 frames)
+    5. Maos Levantadas Ambas (frames 590-596, duração: 7 frames)
+    6. Acenando Tchau (frames 598-606, duração: 9 frames)
+    7. Maos Levantadas Ambas (frames 607-617, duração: 11 frames)
+    8. Mao Levantada Esquerda (frames 618-641, duração: 24 frames)
+    9. Trabalhando (frames 642-678, duração: 37 frames)
+    10. Refletindo (frames 679-684, duração: 6 frames)
 
 DETECÇÃO DE ANOMALIAS
 --------------------------------------------------------------------------------
   Anomalias por tipo:
-    - Movimento Brusco: 153
-    - Mudanca Emocional Brusca: 337
+    - Mudanca Emocional Brusca: 214
 
   Detalhes das anomalias (primeiras 10):
-    1. Frame 2: Movimento brusco detectado: 375.5 pixels
-    2. Frame 16: Mudança emocional brusca: ['neutral', 'angry', 'sad'] -> ['neutral']
-    3. Frame 17: Mudança emocional brusca: ['neutral', 'sad'] -> ['neutral', 'fear']
-    4. Frame 25: Movimento brusco detectado: 209.0 pixels
-    5. Frame 27: Mudança emocional brusca: ['neutral', 'fear', 'sad'] -> ['neutral']
-    6. Frame 28: Movimento brusco detectado: 213.1 pixels
-    7. Frame 30: Movimento brusco detectado: 211.9 pixels
-    8. Frame 30: Movimento brusco detectado: 604.1 pixels
-    9. Frame 36: Mudança emocional brusca: ['neutral', 'fear', 'sad'] -> ['neutral']
-    10. Frame 37: Movimento brusco detectado: 214.4 pixels
+    1. Frame 4: Mudança emocional brusca: ['sad'] -> ['fear']
+    2. Frame 10: Mudança emocional brusca: ['sad', 'fear'] -> ['happy']
+    3. Frame 11: Mudança emocional brusca: ['happy', 'sad', 'fear'] -> ['happy']
+    4. Frame 12: Mudança emocional brusca: ['happy'] -> ['sad', 'fear']
+    5. Frame 15: Mudança emocional brusca: ['happy', 'sad', 'fear'] -> ['fear']
+    6. Frame 41: Mudança emocional brusca: ['fear'] -> ['angry']
+    7. Frame 43: Mudança emocional brusca: ['angry'] -> ['fear']
+    8. Frame 155: Mudança emocional brusca: ['sad'] -> ['surprise', 'fear']
+    9. Frame 220: Mudança emocional brusca: ['happy'] -> ['neutral']
+    10. Frame 232: Mudança emocional brusca: ['happy'] -> ['neutral']
 
 ================================================================================
 Fim do Relatório
