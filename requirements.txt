@@ -10,8 +10,20 @@ numpy>=1.24.0,<2.0.0
 # Barra de progresso
 tqdm>=4.65.0
 
+# Detecção de pose corporal
+# Usando versão que mantém mp.solutions (0.10.21 ou anterior)
+# A versão 0.10.31 removeu mp.solutions em favor da nova API
+mediapipe>=0.10.0,<0.10.30
+
+# Pipeline de análise de emoções
+transformers>=4.35.2
+
 # Dependências indiretas do DeepFace (recomendadas)
 tensorflow>=2.13.0
 Pillow>=9.5.0
 pandas>=2.0.0
 
+# Protobuf - versão compatível com TensorFlow 2.13
+# TensorFlow 2.13 requer protobuf < 5.0, mas versões 4.x podem ter problemas
+# Usando 3.20.x que é a versão mais estável e compatível
+protobuf>=3.20.0,<4.0.0
